@@ -52,6 +52,10 @@ const resetCss = css`
 `
 const GlobalStyle = createGlobalStyle` 
     ${resetCss};
+
+    body {
+        background: black;
+    }
 `;
 
 export default GlobalStyle;

@@ -1,40 +1,83 @@
-import { Animation } from "../visualization-container";
+import { AnimationProps, BarStates } from "../visualization-container";
+import { sleep, swap } from "./algorithms.utils";
 
-export const quickSort = (arr: number[]) => {
-  if(arr.length <= 1) return arr;
+export const quickSort = async (arr: number[], animationProps: AnimationProps) => {
 
-  quickSortHelper(arr, 0, arr.length - 1);
-  return arr;
+  await quickSortHelper(arr, 0, arr.length - 1, animationProps);
 }
 
-const quickSortHelper = (arr: number[], left: number, right: number) => {
+const quickSortHelper = async (arr: number[], left: number, right: number, animationProps: AnimationProps) => {
+  const {states, setStates } = animationProps;
   let pivot;
   let partitionIndex;
 
   if(left < right) {
     pivot = right;
-    partitionIndex = partition(arr, pivot, left, right);
+    partitionIndex = await partition(arr, pivot, left, right, animationProps);
+
+    // set final position animation
+    states[partitionIndex] = BarStates.IS_FINAL;
+    setStates([...states]);
     
     //sort left and right
-    quickSortHelper(arr, left, partitionIndex - 1);
-    quickSortHelper(arr, partitionIndex + 1, right);
+    await Promise.all([quickSortHelper(arr, left, partitionIndex - 1, animationProps),
+    quickSortHelper(arr, partitionIndex + 1, right, animationProps)])
+  } else {
+    // set final position animation
+    states[left] = BarStates.IS_FINAL;
+    setStates([...states]);
   }
 }
 
-const partition = (arr: number[], pivot: number, left: number, right: number) => {
+const partition = async (arr: number[], pivot: number, left: number, right: number, animationProps: AnimationProps) => {
+    const {states, setStates, setArray, speed} = animationProps;
     let pivotValue = arr[pivot];
     let partitionIndex = left;
+
+    // set partition animation
+    states[partitionIndex] = BarStates.IS_PARTITION;
+    setStates([...states]);
+
+    // set pivot animation
+    states[pivot] = BarStates.IS_PIVOT;
+    setStates([...states]);
   
     for(let i = left; i < right; i++) {
+      //set non pivot animation
+      if(i !== pivot && i !== partitionIndex) {
+        states[i] = BarStates.IS_BEING_COMPARED;
+        setStates([...states]);
+      }
+
       if(arr[i] < pivotValue){
-        swap(arr, i, partitionIndex);
+        await sleep(speed);
+        swap(arr, i, partitionIndex, setArray);
+
+        // remove previous partition animation
+        states[partitionIndex] = BarStates.BASE;
+        setStates([...states]);
+
         partitionIndex++;
+
+        // set new partition animation
+        states[partitionIndex] = BarStates.IS_PARTITION;
+        setStates([...states]);
+      }
+
+      // remove non pivot animation
+      if(i !== pivot && i !== partitionIndex) {
+        states[i] = BarStates.BASE;
+        setStates([...states]);
       }
     }
-    swap(arr, pivot, partitionIndex);
-    return partitionIndex;
-}
+    
+    await sleep(speed);
+    swap(arr, pivot, partitionIndex, setArray);
 
-const swap = (arr: number[], a: number, b: number) => {
-    [arr[a], arr[b]] = [arr[b], arr[a]];
+    
+    // remove pivot animation
+    states[pivot] = BarStates.BASE;
+    setStates([...states]);
+
+    return partitionIndex;
 }
